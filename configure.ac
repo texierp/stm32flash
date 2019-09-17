@@ -13,6 +13,17 @@ AM_PROG_AS
 LT_INIT
 AC_CONFIG_MACRO_DIR([m4])
 
+AC_ARG_ENABLE([libgpiod],
+	[AC_HELP_STRING([--enable-libgpiod],
+		[enable gpiod support [default=no]])],
+	[if test "x$enableval" = xyes; then with_libgpiod=true; fi],
+	[with_libgpiod=false])
+AM_CONDITIONAL([WITH_LIBGPIOD], [test "x$with_libgpiod" = xtrue])
+AM_COND_IF([WITH_LIBGPIOD], [
+	PKG_CHECK_MODULES([LIBGPIOD], [libgpiod])
+	AC_DEFINE([HAVE_LIBGPIOD], [1], [Define to 1 if LIBGPIOD is enabled.])
+])
+
 # Checks for programs.
 
 # Checks for libraries.

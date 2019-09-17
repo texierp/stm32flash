@@ -46,6 +46,27 @@ struct gpio_list {
 };
 
 #if defined(__linux__)
+#ifdef HAVE_LIBGPIOD
+#include <gpiod.h>
+static int drive_gpio(const char *chip, int n, int level,
+		      struct gpio_list __unused **gpio_to_release)
+{
+	if (!chip) {
+		fprintf(stderr, "A GPIO chip name is required, add @CHIPNAME after the GPIO\n");
+		return 0;
+	}
+	if (gpiod_ctxless_set_value(chip, n, level, 0, "stm32flash", NULL, NULL)) {
+		fprintf(stderr, "Failed to set GPIO %d on %s\n", n, chip);
+		return 0;
+	}
+	return 1;
+}
+
+static int release_gpio(int __unused n, int __unused input, int __unused exported)
+{
+	return 1;
+}
+#else
 static int write_to(const char *filename, const char *value)
 {
 	int fd, ret;
@@ -92,7 +113,8 @@ static int read_from(const char *filename, char *buf, size_t len)
 	return n;
 }
 
-static int drive_gpio(int n, int level, struct gpio_list **gpio_to_release)
+static int drive_gpio(const char *chip, int n, int level,
+		      struct gpio_list **gpio_to_release)
 {
 	char num[16]; /* sized to carry MAX_INT */
 	char file[48]; /* sized to carry longest filename */
@@ -157,9 +179,10 @@ static int release_gpio(int n, int input, int exported)
 
 	return 1;
 }
+#endif
 #else
-static int drive_gpio(int __unused n, int __unused level,
-		      struct gpio_list __unused **gpio_to_release)
+static int drive_gpio(const char __unused *chip, int __unused n,
+		      int __unused level, struct gpio_list __unused **gpio_to_release)
 {
 	fprintf(stderr, "GPIO control only available in Linux\n");
 	return 0;
@@ -178,6 +201,7 @@ static int gpio_sequence(struct port_interface *port, const char *seq, size_t le
 	const char *sig_str = NULL;
 	const char *s = seq;
 	size_t l = len_seq;
+	char chip[64] = {};
 
 	fprintf(diag, "\nGPIO sequence start\n");
 	while (ret == 0 && *s && l > 0) {
@@ -197,6 +221,16 @@ static int gpio_sequence(struct port_interface *port, const char *seq, size_t le
 			while (isdigit(*s)) {
 				s++;
 				l--;
+			}
+			if (*s == '@') {
+				int n;
+				s++;
+				l--;
+				for (n = 0; s[n] && s[n] != ',' && n < sizeof(chip) - 1; n++)
+					chip[n] = s[n];
+				chip[n] = 0;
+				s += n;
+				l -= n;
 			}
 		} else if (l >= 3 && !strncmp(s, "rts", 3)) {
 			sig_str = s;
@@ -251,7 +285,8 @@ static int gpio_sequence(struct port_interface *port, const char *seq, size_t le
 				printStatus(diag, ret);
 			} else {
 				fprintf(diag, " setting gpio %i to %i... ", gpio, level);
-				ret = (drive_gpio(gpio, level, &gpio_to_release) != 1);
+				ret = (drive_gpio(chip[0] ? chip: NULL, gpio,
+						  level, &gpio_to_release) != 1);
 				printStatus(diag, ret);
 			}
 		}

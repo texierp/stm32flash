@@ -5,7 +5,6 @@ bin_PROGRAMS = stm32flash
 
 AUTOMAKE_OPTIONS = subdir-objects
 
-
 stm32flash_SOURCES  = \
 	dev_table.c	\
 	i2c.c		\
@@ -17,7 +16,7 @@ stm32flash_SOURCES  = \
 	stm32.c		\
 	utils.c
 
-stm32flash_LDADD   = ${top_builddir}/parsers/parsers.la
+stm32flash_LDADD   = ${top_builddir}/parsers/parsers.la $(LIBGPIOD_LIBS)
 
 stm32flash_CFLAGS = \
   -g3 \

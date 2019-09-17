@@ -9,6 +9,11 @@ ifndef AR
 	$(error AR is not defined)
 endif
 
+ifeq ($(WITH_LIBGPIOD),1)
+CFLAGS += -DHAVE_LIBGPIOD
+LIBS += -lgpiod
+endif
+
 INSTALL = install
 
 OBJS =	dev_table.o	\
@@ -31,7 +36,7 @@ parsers/parsers.a: force
 	cd parsers && $(MAKE) parsers.a
 
 stm32flash: $(OBJS) $(LIBOBJS)
-	$(CC) $(LDFLAGS) -o $@ $(OBJS) $(LIBOBJS)
+	$(CC) $(LDFLAGS) -o $@ $(OBJS) $(LIBOBJS) $(LIBS)
 
 clean:
 	rm -f $(OBJS) stm32flash
